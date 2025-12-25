@@ -70,18 +70,17 @@ def evaluate_single_response(response, ground_truth_sql, db_path):
     return generated_sql, is_correct, feedback
 
 class TreeBuilder:
-    def __init__(self, llm_generator: Callable[[List[str]], List[str]], db_root_path: str, max_depth: int = 5, sample_num: int = 3):
+    def __init__(self, llm_generator: Callable[[List[str]], List[str]], db_root_path: str, max_depth: int = 5, sample_num: int = 3, max_workers: int = None):
         self.llm_generator = llm_generator
         self.db_root_path = db_root_path
         self.max_depth = max_depth
         self.sample_num = sample_num
-        # Use a process pool for parallel SQL execution
-        # Use 'spawn' context to avoid issues with CUDA initialized in parent process
-        # Reduce max_workers to avoid OOM or too many processes
-        self.executor = ProcessPoolExecutor(
-            max_workers=min(8, os.cpu_count() or 1),
-            mp_context=multiprocessing.get_context("spawn")
-        )
+        # Removed ProcessPoolExecutor to avoid OOM and stability issues in multi-GPU environment
+        # Validation will be done sequentially as sample_num is small (2-3)
+
+    def _calculate_dynamic_workers(self):
+        # Deprecated
+        return 1
 
     def _parse_input_seq(self, input_seq: str):
         schema = ""
@@ -202,8 +201,8 @@ class TreeBuilder:
             
             next_level_nodes = []
             
-            # Parallel execution of SQL validation
-            results = list(self.executor.map(evaluate_single_response, responses, [ground_truth_sql]*len(responses), [db_path]*len(responses)))
+            # Sequential execution of SQL validation to avoid ProcessPoolExecutor overhead/crashes
+            results = [evaluate_single_response(resp, ground_truth_sql, db_path) for resp in responses]
 
             for ((parent_id, child_idx), response), (generated_sql, is_correct, feedback) in zip(zip(metadata, responses), results):
                 # Skip incorrect nodes at max depth

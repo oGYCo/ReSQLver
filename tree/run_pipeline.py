@@ -94,6 +94,7 @@ def main():
         generator = create_vllm_generator(args.model_path)
 
     # Initialize Tree Builder
+    # Note: Parallel validation removed to ensure stability.
     builder = TreeBuilder(generator, args.db_root_path, args.max_depth, args.sample_num)
     
     os.makedirs(args.output_dir, exist_ok=True)
