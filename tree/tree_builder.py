@@ -67,6 +67,7 @@ def evaluate_single_response(response, ground_truth_sql, db_path):
         return "", False, "Error: No valid SQL found in response"
         
     print(f"[Validation] Validating SQL for DB: {os.path.basename(db_path)}", flush=True)
+    print(f"[Validation] Generated SQL: {generated_sql[:200]}...", flush=True)
     is_correct, feedback = SQLExecutor.execute_sql(generated_sql, ground_truth_sql, db_path)
     print(f"[Validation] Result: {'Correct' if is_correct else 'Incorrect'}", flush=True)
     return generated_sql, is_correct, feedback
@@ -213,6 +214,7 @@ class TreeBuilder:
             try:
                 with ctx.Pool(processes=num_workers) as pool:
                     results = pool.starmap(evaluate_single_response, [(resp, ground_truth_sql, db_path) for resp in responses])
+                print(f"[TreeBuilder] Parallel validation finished.", flush=True)
             except Exception as e:
                 print(f"Parallel execution failed: {e}. Falling back to sequential.")
                 results = [evaluate_single_response(resp, ground_truth_sql, db_path) for resp in responses]

@@ -10,19 +10,23 @@ class SQLExecutor:
         Executes SQL and returns (is_correct, feedback)
         """
         def _exec(p_sql, g_sql, path):
+            print(f"[SQLExecutor] Connecting to DB: {os.path.basename(path)}", flush=True)
             conn = sqlite3.connect(path)
             cursor = conn.cursor()
             
             # Execute Ground Truth first to be sure it works (or to get expected result)
+            print(f"[SQLExecutor] Executing Ground Truth SQL...", flush=True)
             cursor.execute(g_sql)
             ground_truth_res = cursor.fetchall()
             ground_truth_headers = [description[0] for description in cursor.description] if cursor.description else []
             
             # Execute Predicted SQL
+            print(f"[SQLExecutor] Executing Predicted SQL...", flush=True)
             cursor.execute(p_sql)
             predicted_res = cursor.fetchall()
             predicted_headers = [description[0] for description in cursor.description] if cursor.description else []
             
+            conn.close()
             return predicted_res, ground_truth_res, predicted_headers, ground_truth_headers
 
         try:
