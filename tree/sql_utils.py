@@ -26,7 +26,9 @@ class SQLExecutor:
             return predicted_res, ground_truth_res, predicted_headers, ground_truth_headers
 
         try:
+            print(f"[SQLExecutor] Running query on {os.path.basename(db_path)}...", flush=True)
             predicted_res, ground_truth_res, predicted_headers, ground_truth_headers = func_timeout(timeout, _exec, args=(predicted_sql, ground_truth, db_path))
+            print(f"[SQLExecutor] Query finished.", flush=True)
             
             # Check if predicted SQL returned any columns (i.e., was it a SELECT statement?)
             if not predicted_headers and not predicted_res:

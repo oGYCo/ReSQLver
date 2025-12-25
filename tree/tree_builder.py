@@ -66,7 +66,9 @@ def evaluate_single_response(response, ground_truth_sql, db_path):
     if not generated_sql:
         return "", False, "Error: No valid SQL found in response"
         
+    print(f"[Validation] Validating SQL for DB: {os.path.basename(db_path)}", flush=True)
     is_correct, feedback = SQLExecutor.execute_sql(generated_sql, ground_truth_sql, db_path)
+    print(f"[Validation] Result: {'Correct' if is_correct else 'Incorrect'}", flush=True)
     return generated_sql, is_correct, feedback
 
 class TreeBuilder:
@@ -201,8 +203,19 @@ class TreeBuilder:
             
             next_level_nodes = []
             
-            # Sequential execution of SQL validation to avoid ProcessPoolExecutor overhead/crashes
-            results = [evaluate_single_response(resp, ground_truth_sql, db_path) for resp in responses]
+            # Parallel execution of SQL validation using spawn context
+            # This avoids inheriting the heavy VLLM process state and speeds up execution
+            print(f"[TreeBuilder] Starting parallel validation for {len(responses)} responses...", flush=True)
+            ctx = multiprocessing.get_context("spawn")
+            # Use a reasonable number of workers (e.g., up to 32 or CPU count)
+            num_workers = min(len(responses), os.cpu_count() or 32)
+            
+            try:
+                with ctx.Pool(processes=num_workers) as pool:
+                    results = pool.starmap(evaluate_single_response, [(resp, ground_truth_sql, db_path) for resp in responses])
+            except Exception as e:
+                print(f"Parallel execution failed: {e}. Falling back to sequential.")
+                results = [evaluate_single_response(resp, ground_truth_sql, db_path) for resp in responses]
 
             for ((parent_id, child_idx), response), (generated_sql, is_correct, feedback) in zip(zip(metadata, responses), results):
                 # Skip incorrect nodes at max depth
