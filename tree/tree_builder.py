@@ -77,8 +77,9 @@ class TreeBuilder:
         self.sample_num = sample_num
         # Use a process pool for parallel SQL execution
         # Use 'spawn' context to avoid issues with CUDA initialized in parent process
+        # Reduce max_workers to avoid OOM or too many processes
         self.executor = ProcessPoolExecutor(
-            max_workers=min(32, os.cpu_count() or 1),
+            max_workers=min(8, os.cpu_count() or 1),
             mp_context=multiprocessing.get_context("spawn")
         )
 
