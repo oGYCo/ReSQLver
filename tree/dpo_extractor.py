@@ -75,6 +75,7 @@ class DPOExtractor:
                     pairs.append({
                         "question_id": tree.question_id,
                         "db_id": tree.db_id,
+                        "instruction": tree.node_initial.get("input_seq", ""),
                         "question": tree.question,
                         "evidence": tree.evidence,
                         "chosen": chosen.generated_sql,

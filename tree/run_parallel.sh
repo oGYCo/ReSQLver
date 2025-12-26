@@ -20,5 +20,5 @@ python3 -m tree.run_parallel \
     --output_dir "$OUTPUT_DIR" \
     --max_depth 5 \
     --sample_num 2 \
-    --start_question_id 13 \
-    --end_question_id 14
+    --start_question_id 47 \
+    --end_question_id 49

@@ -28,9 +28,19 @@ class Prompts:
 ## EXECUTION FEEDBACK
 {execution_feedback}
 
+## INSTRUCTIONS
+1. Analyze the execution feedback and the incorrect SQL.
+2. Think step-by-step about how to fix the error.
+3. Output the corrected SQL query in a markdown code block.
+
 ## OUTPUT
-Provide the corrected SQL query:
+Respond in the following format:
+<think>
+... reasoning ...
+</think>
+<answer>
 ```sql
-SELECT ...
+... corrected SQL ...
 ```
+</answer>
 """
