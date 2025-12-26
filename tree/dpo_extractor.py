@@ -85,3 +85,56 @@ class DPOExtractor:
                     })
                     
         return pairs
+
+    @staticmethod
+    def extract_baseline_pairs(tree: RevisionTree) -> List[Dict[str, Any]]:
+        """
+        Extracts baseline pairs:
+        Chosen: Correct nodes at the deepest level.
+        Rejected: Incorrect nodes at the shallowest level.
+        Pair all combinations of these sets.
+        """
+        pairs = []
+        nodes = tree.nodes.values()
+        
+        # 1. Find all correct nodes and all incorrect nodes
+        correct_nodes = [n for n in nodes if n.is_correct and n.generated_sql]
+        incorrect_nodes = [n for n in nodes if not n.is_correct and n.generated_sql]
+        
+        if not correct_nodes or not incorrect_nodes:
+            return []
+            
+        # 2. Find max depth for correct nodes
+        max_correct_depth = max(n.depth for n in correct_nodes)
+        deepest_correct_nodes = [n for n in correct_nodes if n.depth == max_correct_depth]
+        
+        # 3. Find min depth for incorrect nodes
+        min_incorrect_depth = min(n.depth for n in incorrect_nodes)
+        shallowest_incorrect_nodes = [n for n in incorrect_nodes if n.depth == min_incorrect_depth]
+        
+        # 4. Generate pairs (Cartesian product)
+        seen_pairs = set()
+        
+        for chosen in deepest_correct_nodes:
+            for rejected in shallowest_incorrect_nodes:
+                # Avoid duplicates (though unlikely given the logic, good practice)
+                pair_key = (chosen.node_id, rejected.node_id)
+                if pair_key in seen_pairs:
+                    continue
+                seen_pairs.add(pair_key)
+                
+                pairs.append({
+                    "question_id": tree.question_id,
+                    "db_id": tree.db_id,
+                    "instruction": tree.node_initial.get("input_seq", ""),
+                    "question": tree.question,
+                    "evidence": tree.evidence,
+                    "chosen": chosen.generated_sql,
+                    "rejected": rejected.generated_sql,
+                    "chosen_dist": chosen.revision_distance,
+                    "rejected_dist": rejected.revision_distance,
+                    "type": "baseline"
+                })
+                
+        return pairs
+
