@@ -80,6 +80,24 @@ def main():
     
     # Sharding logic
     all_data = list(zip(dev_bird, dev_json))
+    # Filter by question_id if specified
+    if args.start_question_id >= 0 or args.end_question_id >= 0:
+        filtered_data = []
+        for bird_item, json_item in all_data:
+            current_qid = json_item.get("question_id")
+            if current_qid is not None:
+                try:
+                    qid_int = int(current_qid)
+                    if args.start_question_id >= 0 and qid_int < args.start_question_id:
+                        continue
+                    if args.end_question_id >= 0 and qid_int > args.end_question_id:
+                        continue
+                    filtered_data.append((bird_item, json_item))
+                except (ValueError, TypeError):
+                    pass
+        all_data = filtered_data
+        print(f"Filtered data to {len(all_data)} examples (IDs {args.start_question_id}-{args.end_question_id})")
+
     if args.num_shards > 1:
         chunk_size = (len(all_data) + args.num_shards - 1) // args.num_shards
         start_idx = args.shard_id * chunk_size
@@ -110,19 +128,6 @@ def main():
         # Merge data
         data = json_item.copy()
         
-        # Check resume and end
-        if args.start_question_id >= 0 or args.end_question_id >= 0:
-            current_qid = data.get("question_id")
-            if current_qid is not None:
-                try:
-                    qid_int = int(current_qid)
-                    if args.start_question_id >= 0 and qid_int < args.start_question_id:
-                        continue
-                    if args.end_question_id >= 0 and qid_int > args.end_question_id:
-                        continue
-                except (ValueError, TypeError):
-                    pass
-
         data["input_seq"] = bird_item.get("input_seq", "")
         
         # Build Tree
