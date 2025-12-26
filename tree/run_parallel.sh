@@ -8,7 +8,7 @@ DB_ROOT="data/train/train_databases"
 OUTPUT_DIR="output"
 
 # Number of GPUs to use
-NUM_GPUS=1
+NUM_GPUS=2
 
 # Run parallel pipeline
 python3 -m tree.run_parallel \
@@ -20,5 +20,5 @@ python3 -m tree.run_parallel \
     --output_dir "$OUTPUT_DIR" \
     --max_depth 5 \
     --sample_num 2 \
-    --start_question_id 13 \
-    --end_question_id 14
+    --start_question_id 62 \
+    --end_question_id 69

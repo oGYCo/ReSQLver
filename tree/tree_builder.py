@@ -19,14 +19,32 @@ def extract_sql_from_response(response: str) -> str:
         valid_lines = [line for line in lines if line.strip() and not line.strip().startswith('--')]
         return '\n'.join(valid_lines).strip()
 
-    if "<answer>" in response and "</answer>" in response:
-        answer = response.split("<answer>")[-1].split("</answer>")[0]
-        if "```sql" in answer:
-            pattern = r"```sql\s*(.*?)\s*```"
-            matches = re.findall(pattern, answer, re.DOTALL)
+    if "<answer>" in response:
+        parts = response.split("<answer>")
+        if len(parts) > 1:
+            potential_answer = parts[1]
+            if "</answer>" in potential_answer:
+                potential_answer = potential_answer.split("</answer>")[0]
+            
+            # 1. Try to find markdown code block
+            # Handle ```sql, ```SQL, or just ```
+            pattern = r"```(?:sql|SQL)?\s*(.*?)\s*```"
+            matches = re.findall(pattern, potential_answer, re.DOTALL)
             if matches:
-                return clean_sql(matches[-1])
-        return clean_sql(answer)
+                # Check if the content looks like SQL (starts with SELECT/WITH) or just take the last block
+                # Prefer the last block as it's usually the final answer
+                candidate = matches[-1].strip()
+                if candidate:
+                     return clean_sql(candidate)
+            
+            # 2. If no code block, try to clean the text directly
+            cleaned = clean_sql(potential_answer)
+            if cleaned:
+                return cleaned
+            
+            # If <answer> tag exists but no content found, return empty
+            # Do NOT fallback to full response search to avoid returning tags or think block
+            return ""
 
     pattern = r"```sql\s*(.*?)\s*```"
     matches = re.findall(pattern, response, re.DOTALL)
@@ -59,7 +77,7 @@ def extract_sql_from_response(response: str) -> str:
         if sql_lines:
             return clean_sql("\n".join(sql_lines).strip())
 
-    return clean_sql(response.strip())
+    return ""
 
 def evaluate_single_response(response, ground_truth_sql, db_path):
     generated_sql = extract_sql_from_response(response)
@@ -198,9 +216,16 @@ class TreeBuilder:
             
             if not prompts:
                 break
+
+            print(f"\n[TreeBuilder] Depth {depth}: Generating {len(prompts)} responses.", flush=True)
+            for idx, p in enumerate(prompts):
+                print(f"\n[TreeBuilder] Input Prompt {idx+1}/{len(prompts)}:\n{p}\n" + "="*50, flush=True)
                 
             # Batch generate
             responses = self.llm_generator(prompts)
+
+            for idx, r in enumerate(responses):
+                print(f"\n[TreeBuilder] Model Output {idx+1}/{len(responses)}:\n{r}\n" + "="*50, flush=True)
             
             next_level_nodes = []
             
@@ -246,12 +271,15 @@ class TreeBuilder:
                 
                 # Prepare for next level if needed
                 if not is_correct and depth < self.max_depth:
+                    # Sanitize previous_sql to avoid breaking markdown
+                    sanitized_sql = child_node.generated_sql.replace("```", "").strip()
+                    
                     # Construct revision prompt
                     revision_prompt = Prompts.REVISION_TEMPLATE.format(
                         schema=schema,
                         evidence=f"Evidence: {evidence}\n" if evidence else "",
                         question=question,
-                        previous_sql=child_node.generated_sql,
+                        previous_sql=sanitized_sql,
                         execution_feedback=feedback
                     )
                     child_node.input_seq = revision_prompt
