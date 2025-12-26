@@ -19,6 +19,10 @@ def extract_sql_from_response(response: str) -> str:
         valid_lines = [line for line in lines if line.strip() and not line.strip().startswith('--')]
         return '\n'.join(valid_lines).strip()
 
+    def is_valid_sql(sql: str) -> bool:
+        # User requirement: SQL must start with SELECT
+        return sql.strip().upper().startswith("SELECT")
+
     if "<answer>" in response:
         parts = response.split("<answer>")
         if len(parts) > 1:
@@ -31,15 +35,15 @@ def extract_sql_from_response(response: str) -> str:
             pattern = r"```(?:sql|SQL)?\s*(.*?)\s*```"
             matches = re.findall(pattern, potential_answer, re.DOTALL)
             if matches:
-                # Check if the content looks like SQL (starts with SELECT/WITH) or just take the last block
+                # Check if the content looks like SQL (starts with SELECT) or just take the last block
                 # Prefer the last block as it's usually the final answer
-                candidate = matches[-1].strip()
-                if candidate:
-                     return clean_sql(candidate)
+                candidate = clean_sql(matches[-1])
+                if is_valid_sql(candidate):
+                     return candidate
             
             # 2. If no code block, try to clean the text directly
             cleaned = clean_sql(potential_answer)
-            if cleaned:
+            if is_valid_sql(cleaned):
                 return cleaned
             
             # If <answer> tag exists but no content found, return empty
@@ -49,25 +53,27 @@ def extract_sql_from_response(response: str) -> str:
     pattern = r"```sql\s*(.*?)\s*```"
     matches = re.findall(pattern, response, re.DOTALL)
     if matches:
-        return clean_sql(matches[-1])
+        candidate = clean_sql(matches[-1])
+        if is_valid_sql(candidate):
+            return candidate
 
     pattern = r"```\s*(.*?)\s*```"
     matches = re.findall(pattern, response, re.DOTALL)
     if matches:
         for match in reversed(matches):
-            sql = match.strip()
-            if sql.upper().startswith("SELECT") or sql.upper().startswith("WITH"):
-                return clean_sql(sql)
+            candidate = clean_sql(match)
+            if is_valid_sql(candidate):
+                return candidate
     
     # Fallback
     upper_response = response.upper()
-    if "SELECT" in upper_response or "WITH" in upper_response:
+    if "SELECT" in upper_response:
         lines = response.split("\n")
         sql_lines = []
         in_sql = False
         for line in lines:
             stripped = line.strip().upper()
-            if (stripped.startswith("SELECT") or stripped.startswith("WITH")) and not in_sql:
+            if stripped.startswith("SELECT") and not in_sql:
                 in_sql = True
                 sql_lines = [line]
             elif in_sql:
@@ -75,7 +81,9 @@ def extract_sql_from_response(response: str) -> str:
                 if ";" in line:
                     break
         if sql_lines:
-            return clean_sql("\n".join(sql_lines).strip())
+            candidate = clean_sql("\n".join(sql_lines).strip())
+            if is_valid_sql(candidate):
+                return candidate
 
     return ""
 
