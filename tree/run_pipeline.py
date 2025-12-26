@@ -118,6 +118,7 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
     
     all_pairs = []
+    all_baseline_pairs = []
     
     # Process
     count = 0
@@ -142,14 +143,25 @@ def main():
         pairs = DPOExtractor.extract_pairs(tree)
         all_pairs.extend(pairs)
         
+        # Extract Baseline Pairs
+        baseline_pairs = DPOExtractor.extract_baseline_pairs(tree)
+        all_baseline_pairs.extend(baseline_pairs)
+        
         count += 1
 
     # Save all pairs
     pairs_file = os.path.join(args.output_dir, f"final_data_emerge_shard_{args.shard_id}.json")
     with open(pairs_file, 'w') as f:
         json.dump(all_pairs, f, indent=2)
+
+    # Save baseline pairs
+    baseline_file = os.path.join(args.output_dir, f"final_data_baseline_shard_{args.shard_id}.json")
+    with open(baseline_file, 'w') as f:
+        json.dump(all_baseline_pairs, f, indent=2)
         
-    print(f"Done. Processed {count} questions. Generated {len(all_pairs)} pairs.")
+    print(f"Done. Processed {count} questions.")
+    print(f"Generated {len(all_pairs)} emerge pairs.")
+    print(f"Generated {len(all_baseline_pairs)} baseline pairs.")
     print(f"Results saved to {args.output_dir}")
 
 if __name__ == "__main__":
