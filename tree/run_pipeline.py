@@ -29,7 +29,7 @@ def create_vllm_generator(model_path, tensor_parallel_size=1):
         tensor_parallel_size=tensor_parallel_size,
         trust_remote_code=True,
         gpu_memory_utilization=0.95,
-        max_model_len=4096,
+        max_model_len=8192,
         enforce_eager=True
     )
     
@@ -40,8 +40,15 @@ def create_vllm_generator(model_path, tensor_parallel_size=1):
     )
 
     def generate(prompts: List[str]) -> List[str]:
-        outputs = llm.generate(prompts, sampling_params)
-        return [output.outputs[0].text for output in outputs]
+        try:
+            outputs = llm.generate(prompts, sampling_params)
+            return [output.outputs[0].text for output in outputs]
+        except ValueError as e:
+            if "longer than the maximum model length" in str(e):
+                print(f"Warning: Prompt too long, skipping generation. Error: {e}")
+                # Return empty strings for failed prompts to allow pipeline to continue
+                return [""] * len(prompts)
+            raise e
 
     return generate
 
