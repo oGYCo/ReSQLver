@@ -69,6 +69,9 @@ class DPOExtractor:
                     rejected = node1
                 
                 if chosen and rejected:
+                    if not chosen.generated_sql or not rejected.generated_sql:
+                        continue
+
                     pairs.append({
                         "question_id": tree.question_id,
                         "db_id": tree.db_id,

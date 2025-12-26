@@ -36,7 +36,7 @@ def create_vllm_generator(model_path, tensor_parallel_size=1):
     sampling_params = SamplingParams(
         temperature=0.7,
         max_tokens=1024,
-        stop=["</answer>", "```sql\n\n"]
+        stop=["</answer>"]
     )
 
     def generate(prompts: List[str]) -> List[str]:
